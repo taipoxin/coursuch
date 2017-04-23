@@ -81,6 +81,7 @@ begin
 end;
 
 
+// наш 16 битный хеш
 function hashH37(s: string):integer;
 var hash: integer;
     i: cardinal;
@@ -150,27 +151,6 @@ begin
 end;
 
 
-{
-// полиномиальный хеш, очень быстро выходит за пределы типа
-function PolyHash(mess:String):int64;
-var   i: integer;
-    p,currp,sum,currsummary: int64;
-begin
-  p:= 256;
-  sum:=0;
-  currp:= 1;
-  //Form1.Label2.Caption:= '';
-  for i:=1 to Length(mess) do
-    begin
-      currsummary:=currp*ord(mess[i]);
-      sum:= sum + currsummary;
-      currp:= p * currp;
-    end;
-  Result:= sum;
-end;
-}
-
-
 Procedure gcd_ext(a, b : integer; var x, y, gcd : integer);
 var x1,y1 : integer;
 Begin
@@ -195,8 +175,6 @@ begin
 end;
 
 
-
-
 // функци€ возведени€ в степень (дл€ положительных чисел и степеней.
 function pow(base, up:int64): int64;
 var i: cardinal;
@@ -218,64 +196,7 @@ begin
     end;
 end;
 
-{
-procedure genKeys();
-var
-EilerfromN: int64;
-eilerPlusOne: int64;
-j: int64;
-simple: boolean;
 
-begin
-  Randomize();
-
-  simple:= true;
-  tried:= 0;
-
-  // если Eiler+1 окажетс€ простым числом, то проходим еще раз.
-  while (simple) do
-    begin
-      p:= 0;
-      q:= 0;
-      while (p = 0) or (q = 0) or (p = q) do
-        begin
-          p:= RandomFrom(B);
-          q:= RandomFrom(B);
-          inc(tried);
-          // функци€ Ёйлера дл€ n
-          EilerfromN := (p-1)*(q-1);
-          // eilerPlusOne - число, делители которого
-          // будут давать остаток 1 при делении на ф-ию Ёйлера
-          eilerPlusOne:= EilerfromN + 1;
-        end;
-
-      j:=2;
-      // от 2 до ~ sqrt(Eiler+1)
-      while (j <= res) do
-        begin
-          // если j €вл€етс€ делителем, то записываем его как e, а второй делитель как d
-          if (eilerPlusOne mod j) = 0 then
-            begin
-            // first version:
-
-              eexp:= j;
-              dexp:= eilerPlusOne div eexp;
-
-            // second version:
-              dexp:= j;
-              eexp:= eilerPlusOne div dexp;
-
-            // убираем глобальный флаг
-              simple:= false;
-              break;
-            end;
-          inc(j);
-        end;
-    end;
-    n:= p * q;
-
-end;
-}
 
 function toInt(ch: char):integer;
 begin
@@ -365,24 +286,24 @@ begin
   //eexp := 11;
   {}
 
-  {
+{
   eiler := 11;
   eexp:= 4;
-   }
+ }
 
+  dexp := (aa mod eiler + eiler) mod eiler;
+  
   Form1.Label6.Caption := '  before first ' +  IntToStr(aa) + '  before second   ' + IntToStr(bb);
   Form1.Label6.Visible:= True;
-  dexp := (aa mod eiler + eiler) mod eiler;
-
-
-  //dexp := NOD(eiler, (1/eexp));
 
 
 end;
 
-function getProizvCheck(one, two : integer) : integer;
+function getProizvCheck(one, two : integer) : int64;
 begin
   Result:= pow(one, two);
+  if (Result < 0) then
+    Result:= -1;
   Result:= Result mod n;
 end;
 
@@ -412,14 +333,14 @@ begin
     hashCode := hashH37(mesage);
   reshetoErat();
   generateKeys();
-  {
+  {}
   n := 33;
   eexp := 3;
   dexp := 7;
 
-  }
-  s := getProizvCheck(hashCode, dexp);
-
+  {}
+  //s := getProizvCheck(hashCode, dexp);
+  genDigitalSignature();
 
   endd := GetTickCount();
   full:= full + (endd - start);
