@@ -62,6 +62,34 @@ uses
 
 {$R *.dfm}
 
+procedure reshErat(maxEl : integer);
+var
+  A: array of boolean;
+  n, x, y: integer;
+begin
+  SetLength(A, maxEl);
+  A[1] := false;
+  n := maxEl;
+  Form1.Label2.Caption := ' ';
+  for x := 2 to n do
+    A[x] := true;
+  for x := 2 to n div 2 do
+    for y := 2 to n div x do
+      A[x * y] := false;
+  y := 1;
+  x:= n;
+  while (y < Length(B)) do
+  begin
+    if A[x] then
+    begin
+      B[y] := x;
+      inc(y);
+    end;
+    x := x-1;
+  end;
+end;
+
+
 // решето Ёратосфена как процедура поиска больших простых чисел
 procedure reshetoErat();
 var
@@ -295,7 +323,7 @@ begin
 
   k1 := 0;
   k2 := 1;
-  while ((p = q) or (p = 0) or (q = 0) or (n < minimalN * 5) or (n > minimalN * 50) or (k1 <> k2)) do
+  while ((p = q) or (p = 0) or (q = 0) or (n < minimalN) or (n > minimalN * 50) or (k1 <> k2)) do
   begin
     p := RandomFrom(b);
     q := RandomFrom(b);
@@ -306,13 +334,15 @@ begin
   end;
 
   eiler := (p - 1) * (q - 1);
-
+  {}
+  reshErat(50);
+  {}
   eexp := 1;
   nod := 0;
   {}
   while (nod <> 1) do
   begin
-    Inc(eexp);
+    eexp := RandomFrom(B);
     gcd_ext(eexp, eiler, aa, bb, nod);
   end;
   //eexp := 11;
@@ -352,7 +382,8 @@ begin
 
   //reshetoErat(minimalN*100);
   {}
-  reshetoErat();
+  //reshetoErat();
+  reshErat(Round(Sqrt(minimalN*2)));
   generateKeys(minimalN);
   {}
 {
@@ -362,6 +393,15 @@ begin
 }
 
   //s := getProizvCheck(hashCode, dexp);
+  {}
+  p := 337;
+  q := 449;
+  n := 151313;
+  eiler := 150528;
+  eexp := 5;
+  dexp := 90317;
+
+  {}
   genDigitalSignature();
 
   endd := GetTickCount();
@@ -466,7 +506,8 @@ begin
     if (proizv = hashCode) then
     begin
 
-      Writeln(f, str);
+     Writeln(f, str);
+     Break;
 
     end;
   end;
