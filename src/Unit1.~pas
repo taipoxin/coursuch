@@ -219,6 +219,28 @@ begin
   s := pow(hashCode, dexp) mod n;
 end;
 
+
+function longPow(base, up : int64) : int64;
+var strUp : string;
+    i, k : integer;
+    m : int64;
+begin
+  strUp := ToBin(up);
+  m := base;
+  k := length(strUp);
+  for i := 2 to k do
+  begin
+    m := m*m * pow(base, toInt(strUp[k - i + 1]));
+    if (m < 1) then
+    begin
+      m := -1;
+      Break;
+    end;
+    m := m mod n;
+  end;
+  Result := m;
+end;
+
 // uses Pow()
 procedure genDigitalSignature();
 var
@@ -227,23 +249,11 @@ var
   m: int64;
 begin
 //949666443
-  strdexp := ToBin(dexp);
-  m := hashCode;
-  k := length(strdexp);
-  for i := 2 to k do
-  begin
-    m := (m * m * pow(hashCode, toInt(strdexp[k - i + 1])));
-    if (m < 1) then
-    begin
-      m := -1;
-      Break;
-    end;
-    m := m mod n;
-  end;
-  s := m;
+  s := longPow(hashCode, dexp);
 
 
   Form1.Label1.Caption:= IntToStr(s);
+  Form1.Label1.Visible:= True;
   //s := Pow(hashCode, dexp) mod n;
 
 end;
@@ -271,19 +281,28 @@ begin
   Result := a;
 end;
 
+
 procedure generateKeys(minimalN: integer);
 var
   aa, bb, nod: integer;
+  k1, k2 : Cardinal;
 begin
   Randomize();
 
+
   p := 0;
   q := 0;
-  while ((p = q) or (p = 0) or (q = 0) or (n < minimalN * 10) or (n > minimalN * 100)) do
+
+  k1 := 0;
+  k2 := 1;
+  while ((p = q) or (p = 0) or (q = 0) or (n < minimalN * 5) or (n > minimalN * 50) or (k1 <> k2)) do
   begin
     p := RandomFrom(b);
     q := RandomFrom(b);
+    k1 := Length(toBin(p));
+    k2 := Length(toBin(q));
     n := p * q;
+
   end;
 
   eiler := (p - 1) * (q - 1);
@@ -332,9 +351,10 @@ begin
    }
 
   //reshetoErat(minimalN*100);
+  {}
   reshetoErat();
   generateKeys(minimalN);
-
+  {}
 {
   n := 33;
   eexp := 3;
@@ -347,7 +367,18 @@ begin
   endd := GetTickCount();
   full := full + (endd - start);
   //Form1.Label3.Caption:= Form1.Label3.Caption +   '  public and private keys: ' + IntToStr(endd - start);
-  Form1.Label3.Caption := Form1.Label3.Caption + '; time: ' + IntToStr(full);
+  Form1.Label3.Caption := '';
+end;
+
+
+function checkIt() : int64;
+var
+  proizv: int64;
+begin
+  proizv := longPow(s, eexp);
+  Form1.Label6.Caption := IntToStr(proizv);
+  Form1.Label6.Visible := True;
+  Result:= proizv;
 end;
 
 procedure TForm1.Button1Click(Sender: TObject);
@@ -360,6 +391,9 @@ var
   k, i: Cardinal;
   el, elements: integer;
   mesage: string;
+  proizv : int64;
+  f : TextFile;
+  str : string;
 begin
   maxInt64 := 9223372036854775807;
 // 2^21 -1 ибо m^3 должно быть <= maxInt64
@@ -409,7 +443,35 @@ begin
     MArray[0] := hashCode;
   end;
 
-  createSign(currentM);
+
+  AssignFile(f, 'text.txt');
+  Append(f);
+
+
+  for i := 1 to 100 do
+  begin
+    createSign(currentM);
+    proizv := checkIt();
+    str :=
+    'm = ' + IntToStr(hashCode)
+    + ' ; m` = ' + IntToStr(proizv)
+    + ' ; p = ' + IntToStr(p)
+    + ' ; q = ' + IntToStr(q)
+    + ' ; n = ' + IntToStr(n)
+    + ' ; eiler = ' + IntToStr(eiler)
+    + ' ; eexp = ' + IntToStr(eexp)
+    + ' ; dexp = ' + IntToStr(dexp);
+
+
+    if (proizv = hashCode) then
+    begin
+
+      Writeln(f, str);
+
+    end;
+  end;
+
+  CloseFile(f);
 end;
 
 // http://www.cyberforum.ru/delphi-beginners/thread1116790.html
@@ -423,8 +485,9 @@ end;
 
 procedure TForm1.Button2Click(Sender: TObject);
 var
-  m, n, x, y, g, dex: integer;
+  m, x, y, g, dex: integer;
 begin
+  {
   m := StrToInt(Edit1.Text);
   n := StrToInt(Edit2.Text);
   if (m < 0) or (n < 0) then
@@ -433,22 +496,25 @@ begin
     Exit;
   end;
 
-  gcd_ext(m, n, x, y, g);
+  }
+  //gcd_ext(m, n, x, y, g);
+  n := 144;
+  dex := longPow(10, 6);
 
-  dex := (x mod n + n) mod n;
+
+
+  //dex := (x mod n + n) mod n;
  // Form1.Label6.Caption := '  before first ' +  IntToStr(x) + '  before second   ' + IntToStr(y) + ' dex = ' + IntToStr(dex);
- // Form1.Label6.Visible:= True;
-  ShowMessage(Format('gcd(%d, %d) = %d', [m, n, g]) + #13#10 + Format('%d * %d %s %d * %d = %d', [x, m, Znak(y), Abs(y), n, g]));
+  Form1.Label6.Caption:= IntToStr(dex);
+  Form1.Label6.Visible:= True;
+  //ShowMessage(Format('gcd(%d, %d) = %d', [m, n, g]) + #13#10 + Format('%d * %d %s %d * %d = %d', [x, m, Znak(y), Abs(y), n, g]));
 end;
+
+
 
 procedure TForm1.Button3Click(Sender: TObject);
-var
-  proizv: integer;
 begin
-  proizv := getProizvCheck(s, eexp);
-  Label6.Caption := IntToStr(proizv);
-  Label6.Visible := True;
+checkIt();
 end;
-
 end.
 
