@@ -64,6 +64,7 @@ uses
 
 procedure reshErat(maxEl : integer);
 var
+  BB: array[1..50] of Integer;
   A: array of boolean;
   n, x, y: integer;
 begin
@@ -78,7 +79,7 @@ begin
       A[x * y] := false;
   y := 1;
   x:= n;
-  while (y < Length(B)) do
+  while (y < Length(B)) and (x > 0) do
   begin
     if A[x] then
     begin
@@ -87,6 +88,7 @@ begin
     end;
     x := x-1;
   end;
+
 end;
 
 
@@ -173,6 +175,33 @@ begin
   Result := res;
 end;
 
+
+//   http://granitnayki.com/?p=212
+// ЭТА ХЕРНЯ ИЗОБРЕТЕНА УКРОПАМИ
+function niceLongPow(a : int64; n : Int64; m: int64):int64;
+var c, S, y : Int64;
+    i, k : integer;
+    strUp : string;
+begin
+  if (n = 1) then
+    Result:= a mod m
+  else
+  begin
+    strUp := ToBin(n);
+    k := length(strUp);
+    y:= a mod m;
+    for i:=k downto 2 do
+    begin
+      y:= (y*y) mod m;
+      if (strUp[i] = '1') then
+      begin
+        y:= y*a mod m;
+      end;
+    end;
+    Result:= y;
+  end;
+end;
+
 // хеширование строки методом SDBM (х32) с хорошим распределением по всем битам (мало коллизий)
 function SDBM(mess: string): int64;
 var
@@ -185,6 +214,7 @@ begin
   Result := hash;
 end;
 
+// нод чисел алгоритмом 
 procedure gcd_ext(a, b: integer; var x, y, gcd: integer);
 var
   x1, y1: integer;
@@ -201,6 +231,7 @@ begin
   y := x1 - (a div b) * y1
 end;
 
+// херня без задач
 function Znak(Val: Integer): Char;
 begin
   if Val >= 0 then
@@ -211,6 +242,7 @@ end;
 
 
 // функция возведения в степень (для положительных чисел и степеней.
+// обычное возведение
 function pow(base, up: int64): int64;
 var
   i: cardinal;
@@ -232,6 +264,7 @@ begin
   end;
 end;
 
+// возврат в число
 function toInt(ch: char): integer;
 begin
   if ch = '0' then
@@ -242,34 +275,8 @@ begin
     Result := 9999;
 end;
 
-procedure generateRsaSignature();
-begin
-  s := pow(hashCode, dexp) mod n;
-end;
 
 
-function longPow(base, up : int64) : int64;
-var strUp : string;
-    i, k : integer;
-    m : int64;
-begin
-  strUp := ToBin(up);
-  m := base;
-  k := length(strUp);
-  for i := 2 to k do
-  begin
-    m := m*m * pow(base, toInt(strUp[k - i + 1]));
-    if (m < 1) then
-    begin
-      m := -1;
-      Break;
-    end;
-    m := m mod n;
-  end;
-  Result := m;
-end;
-
-// uses Pow()
 procedure genDigitalSignature();
 var
   strdexp: string;
@@ -277,37 +284,12 @@ var
   m: int64;
 begin
 //949666443
-  s := longPow(hashCode, dexp);
-
-
+  s := niceLongPow(hashCode, dexp, n);
   Form1.Label1.Caption:= IntToStr(s);
   Form1.Label1.Visible:= True;
-  //s := Pow(hashCode, dexp) mod n;
 
 end;
 
-function mode(a, b: Real): Real;
-begin
-  if (a < b) then
-    Result := a
-  else
-  begin
-    Result := Round(a) mod Round(b);
-  end;
-end;
-
-function NOD(a, b: Real): Real;
-var
-  t: Real;
-begin
-  while (b > 0) do
-  begin
-    t := mode(a, b);
-    a := b;
-    b := t;
-  end;
-  Result := a;
-end;
 
 
 procedure generateKeys(minimalN: integer);
@@ -316,13 +298,12 @@ var
   k1, k2 : Cardinal;
 begin
   Randomize();
-
-
   p := 0;
   q := 0;
 
   k1 := 0;
   k2 := 1;
+  {
   while ((p = q) or (p = 0) or (q = 0) or (n < minimalN) or (n > minimalN * 50) or (k1 <> k2)) do
   begin
     p := RandomFrom(b);
@@ -332,42 +313,24 @@ begin
     n := p * q;
 
   end;
-
-  eiler := (p - 1) * (q - 1);
-  {}
-  reshErat(50);
-  {}
-  eexp := 1;
-  nod := 0;
-  {}
-  while (nod <> 1) do
-  begin
-    eexp := RandomFrom(B);
-    gcd_ext(eexp, eiler, aa, bb, nod);
-  end;
-  //eexp := 11;
-  {}
-
-{
-  eiler := 11;
-  eexp:= 4;
- }
-
-  dexp := (aa mod eiler + eiler) mod eiler;
-
- {
-  Form1.Label6.Caption := '  before first ' +  IntToStr(aa) + '  before second   ' + IntToStr(bb);
-  Form1.Label6.Visible:= True;
   }
 
-end;
+  {}
+  p:= 19;    // 19 3
+  q:= 31;   // 31  11
+  n:= p*q;
+  {}
 
-function getProizvCheck(one, two: integer): int64;
-begin
-  Result := pow(one, two);
-  if (Result < 0) then
-    Result := -1;
-  Result := Result mod n;
+  eiler := (p - 1) * (q - 1);
+  eexp := 1;
+  nod := 0;
+  while (nod <> 1) do
+  begin
+    inc(eexp);
+    gcd_ext(eexp, eiler, aa, bb, nod);
+  end;
+  dexp := (aa mod eiler + eiler) mod eiler;
+
 end;
 
 procedure createSign(minimalN: integer);
@@ -383,7 +346,7 @@ begin
   //reshetoErat(minimalN*100);
   {}
   //reshetoErat();
-  reshErat(Round(Sqrt(minimalN*2)));
+  reshErat(Round(Sqrt(minimalN*10)));
   generateKeys(minimalN);
   {}
 {
@@ -393,7 +356,7 @@ begin
 }
 
   //s := getProizvCheck(hashCode, dexp);
-  {}
+  {
   p := 337;
   q := 449;
   n := 151313;
@@ -401,7 +364,7 @@ begin
   eexp := 5;
   dexp := 90317;
 
-  {}
+  }
   genDigitalSignature();
 
   endd := GetTickCount();
@@ -415,7 +378,7 @@ function checkIt() : int64;
 var
   proizv: int64;
 begin
-  proizv := longPow(s, eexp);
+  proizv := niceLongPow(s, eexp, n);
   Form1.Label6.Caption := IntToStr(proizv);
   Form1.Label6.Visible := True;
   Result:= proizv;
@@ -432,7 +395,7 @@ var
   el, elements: integer;
   mesage: string;
   proizv : int64;
-  f : TextFile;
+  f, f1 : TextFile;
   str : string;
 begin
   maxInt64 := 9223372036854775807;
@@ -486,10 +449,13 @@ begin
 
   AssignFile(f, 'text.txt');
   Append(f);
+  AssignFile(f1, 'bad.txt');
+  Append(f1);
 
-
-  for i := 1 to 100 do
+  z:= hashCode;
+  for i := 1 to z do
   begin
+    hashCode:= i;
     createSign(currentM);
     proizv := checkIt();
     str :=
@@ -505,14 +471,15 @@ begin
 
     if (proizv = hashCode) then
     begin
-
      Writeln(f, str);
-     Break;
-
-    end;
+     //Break;
+    end
+    else
+      Writeln(f1, str);
   end;
 
   CloseFile(f);
+  CloseFile(f1);
 end;
 
 // http://www.cyberforum.ru/delphi-beginners/thread1116790.html
@@ -524,34 +491,48 @@ end;
 // http://teh-box.ru/informationsecurity/algoritm-shifrovaniya-rsa-na-palcax.html
 // https://planetcalc.ru/3311/
 
+
+
 procedure TForm1.Button2Click(Sender: TObject);
 var
-  m, x, y, g, dex: integer;
+  mm, nn, x, y, g, dex: integer;
+  z1: Int64;
+  z2: Int64;
 begin
-  {
-  m := StrToInt(Edit1.Text);
-  n := StrToInt(Edit2.Text);
-  if (m < 0) or (n < 0) then
+  {}
+  mm := StrToInt(Edit1.Text);
+  nn := StrToInt(Edit2.Text);
+  if (mm < 0) or (nn < 0) then
   begin
     ShowMessage('Числа должны быть натуральными');
     Exit;
   end;
+  // 46390487073556736
+  // 9222710978872688896
+  {}
+  //gcd_ext(mm, nn, x, y, g);
+  //n := 144;
+  //dex := longPow(10, 6);
+  n := 9223372036854775807;
+  z1 := pow(mm,nn) mod n;
+  z2 := niceLongPow(mm,nn, n);
 
-  }
-  //gcd_ext(m, n, x, y, g);
-  n := 144;
-  dex := longPow(10, 6);
 
+  Form1.Label6.Caption:= IntToStr(z1) + ' ' + IntToStr(z2);
+  Form1.Label6.Visible:= True;
+  {
 
-
-  //dex := (x mod n + n) mod n;
+  dex := (x mod n + n) mod n;
  // Form1.Label6.Caption := '  before first ' +  IntToStr(x) + '  before second   ' + IntToStr(y) + ' dex = ' + IntToStr(dex);
   Form1.Label6.Caption:= IntToStr(dex);
   Form1.Label6.Visible:= True;
-  //ShowMessage(Format('gcd(%d, %d) = %d', [m, n, g]) + #13#10 + Format('%d * %d %s %d * %d = %d', [x, m, Znak(y), Abs(y), n, g]));
+  ShowMessage(Format('gcd(%d, %d) = %d', [m, n, g]) + #13#10 + Format('%d * %d %s %d * %d = %d', [x, m, Znak(y), Abs(y), n, g]));
+
+  }
 end;
 
 
+// Молдовян Н. А. Теоретический минимум и алгоритмы цифровой подписи
 
 procedure TForm1.Button3Click(Sender: TObject);
 begin
