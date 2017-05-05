@@ -176,6 +176,23 @@ begin
 end;
 
 
+function modexp(x,y,n:int64; var z3 : int64):Int64;
+var z, k : int64;
+begin
+  if (y = 0) then
+    Result:= 1
+  else
+  begin
+    k:= y;
+    z := modexp(x, k div 2, n, z3);
+    if ((y mod 2) = 0) then
+      Result:= (z*z) mod n
+    else
+      Result:= (x*z*z) mod n;
+  end;
+  z3:= Result;
+end;
+
 //   http://granitnayki.com/?p=212
 // ›“¿ ’≈–Õﬂ »«Œ¡–≈“≈Õ¿ ” –Œœ¿Ã»
 function niceLongPow(a : int64; n : Int64; m: int64):int64;
@@ -284,7 +301,8 @@ var
   m: int64;
 begin
 //949666443
-  s := niceLongPow(hashCode, dexp, n);
+  //s := niceLongPow(hashCode, dexp, n);
+  modexp(hashCode, dexp, n, s);
   Form1.Label1.Caption:= IntToStr(s);
   Form1.Label1.Visible:= True;
 
@@ -378,7 +396,8 @@ function checkIt() : int64;
 var
   proizv: int64;
 begin
-  proizv := niceLongPow(s, eexp, n);
+  //proizv := niceLongPow(s, eexp, n);
+  modexp(s, eexp, n, proizv);
   Form1.Label6.Caption := IntToStr(proizv);
   Form1.Label6.Visible := True;
   Result:= proizv;
@@ -498,6 +517,7 @@ var
   mm, nn, x, y, g, dex: integer;
   z1: Int64;
   z2: Int64;
+  z3: Int64;
 begin
   {}
   mm := StrToInt(Edit1.Text);
@@ -514,8 +534,10 @@ begin
   //n := 144;
   //dex := longPow(10, 6);
   n := 9223372036854775807;
-  z1 := pow(mm,nn) mod n;
+  z1 := pow(mm,nn);
+  z1 := z1 mod n;
   z2 := niceLongPow(mm,nn, n);
+  modexp(mm, nn, n, z3);
 
 
   Form1.Label6.Caption:= IntToStr(z1) + ' ' + IntToStr(z2);
