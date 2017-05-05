@@ -321,7 +321,7 @@ begin
 
   k1 := 0;
   k2 := 1;
-  {
+  {}
   while ((p = q) or (p = 0) or (q = 0) or (n < minimalN) or (n > minimalN * 50) or (k1 <> k2)) do
   begin
     p := RandomFrom(b);
@@ -331,13 +331,13 @@ begin
     n := p * q;
 
   end;
-  }
-
   {}
+
+  {
   p:= 19;    // 19 3
   q:= 31;   // 31  11
   n:= p*q;
-  {}
+  }
 
   eiler := (p - 1) * (q - 1);
   eexp := 1;
@@ -472,9 +472,9 @@ begin
   Append(f1);
 
   z:= hashCode;
-  for i := 1 to z do
-  begin
-    hashCode:= i;
+ // for i := 1 to z do
+ // begin
+ //  hashCode:= i;
     createSign(currentM);
     proizv := checkIt();
     str :=
@@ -495,7 +495,7 @@ begin
     end
     else
       Writeln(f1, str);
-  end;
+ // end;
 
   CloseFile(f);
   CloseFile(f1);
