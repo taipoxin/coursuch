@@ -9,20 +9,8 @@ uses
 type
   TForm1 = class(TForm)
     Button1: TButton;
-    Label1: TLabel;
-    Label2: TLabel;
-    Label3: TLabel;
-    Label4: TLabel;
-    Button2: TButton;
-    Edit1: TEdit;
-    Edit2: TEdit;
-    Button3: TButton;
-    Label5: TLabel;
-    Label6: TLabel;
     Edit3: TEdit;
     procedure Button1Click(Sender: TObject);
-    procedure Button2Click(Sender: TObject);
-    procedure Button3Click(Sender: TObject);
   private
     { Private declarations }
   public
@@ -37,19 +25,21 @@ var
   hashCode: Int64;
   messager: string;
   // открытая экспонента
-  eexp: integer;
+  //eexp: integer;
   // секретная экспонента
-  dexp: integer;
+  //dexp: integer;
   // Электронная подпись (Digital signature)
-  s: int64;
+  //s: int64;
   p, q: integer;
-  n, eiler: Int64;
+  eiler: Int64;
   flag: boolean;
   res: integer;
   MArray: array of integer;
   SignArray: array of int64;
   maxInt64: Int64;
   maxM: integer;   // 2^21 -1
+
+  isHashNegative : boolean;
 
   //testers:
   tried: cardinal;
@@ -71,7 +61,6 @@ begin
   SetLength(A, maxEl);
   A[1] := false;
   n := maxEl;
-  Form1.Label2.Caption := ' ';
   for x := 2 to n do
     A[x] := true;
   for x := 2 to n div 2 do
@@ -100,7 +89,6 @@ var
 begin
   A[1] := false;
   n := 232;
-  Form1.Label2.Caption := ' ';
   for x := 2 to n do
     A[x] := true;
   for x := 2 to n div 2 do
@@ -219,6 +207,19 @@ begin
   end;
 end;
 
+function substring(from : string; start, endd : Cardinal):string;
+var i : Cardinal;
+begin
+  Result:= '';
+  if  not ((endd < start) or (start < 1) or (endd > Length(from))) then
+  begin
+    for i:=start to endd do
+    begin
+      Result:= Result + from[i];
+    end;
+  end;
+end;
+
 // хеширование строки методом SDBM (х32) с хорошим распределением по всем битам (мало коллизий)
 function SDBM(mess: string): int64;
 var
@@ -294,23 +295,17 @@ end;
 
 
 
-procedure genDigitalSignature();
-var
-  strdexp: string;
-  i, k: integer;
-  m: int64;
+function genDigitalSignature(part : integer; dexp : integer; n : int64):Int64;
+var s : int64;
 begin
-//949666443
   //s := niceLongPow(hashCode, dexp, n);
-  modexp(hashCode, dexp, n, s);
-  Form1.Label1.Caption:= IntToStr(s);
-  Form1.Label1.Visible:= True;
-
+  modexp(part, dexp, n, s);
+  Result:= s;
 end;
 
 
 
-procedure generateKeys(minimalN: integer);
+procedure generateKeys(minimalN: integer; var n : Int64; var eexp : integer; var dexp : integer);
 var
   aa, bb, nod: integer;
   k1, k2 : Cardinal;
@@ -318,10 +313,9 @@ begin
   Randomize();
   p := 0;
   q := 0;
-
   k1 := 0;
   k2 := 1;
-  {}
+
   while ((p = q) or (p = 0) or (q = 0) or (n < minimalN) or (n > minimalN * 50) or (k1 <> k2)) do
   begin
     p := RandomFrom(b);
@@ -329,77 +323,36 @@ begin
     k1 := Length(toBin(p));
     k2 := Length(toBin(q));
     n := p * q;
-
   end;
-  {}
-
-  {
-  p:= 19;    // 19 3
-  q:= 31;   // 31  11
-  n:= p*q;
-  }
 
   eiler := (p - 1) * (q - 1);
   eexp := 1;
   nod := 0;
+
   while (nod <> 1) do
   begin
     inc(eexp);
     gcd_ext(eexp, eiler, aa, bb, nod);
   end;
   dexp := (aa mod eiler + eiler) mod eiler;
-
 end;
 
-procedure createSign(minimalN: integer);
+procedure createSign(minimalN: integer; var n : Int64; var eexp : integer; var dexp : integer);
 var
   start, endd, full: integer;
   hsh: int64;
 begin
-  {
-  full:= 0;
-  start:= GetTickCount();
-   }
-
-  //reshetoErat(minimalN*100);
-  {}
-  //reshetoErat();
   reshErat(Round(Sqrt(minimalN*10)));
-  generateKeys(minimalN);
-  {}
-{
-  n := 33;
-  eexp := 3;
-  dexp := 7;
-}
-
-  //s := getProizvCheck(hashCode, dexp);
-  {
-  p := 337;
-  q := 449;
-  n := 151313;
-  eiler := 150528;
-  eexp := 5;
-  dexp := 90317;
-
-  }
-  genDigitalSignature();
-
-  endd := GetTickCount();
-  full := full + (endd - start);
-  //Form1.Label3.Caption:= Form1.Label3.Caption +   '  public and private keys: ' + IntToStr(endd - start);
-  Form1.Label3.Caption := '';
+  generateKeys(minimalN, n, eexp, dexp);
 end;
 
 
-function checkIt() : int64;
+function checkIt(part:integer; exp : Integer; targetMod : Int64) : int64;
 var
   proizv: int64;
 begin
   //proizv := niceLongPow(s, eexp, n);
-  modexp(s, eexp, n, proizv);
-  Form1.Label6.Caption := IntToStr(proizv);
-  Form1.Label6.Visible := True;
+  modexp(part, exp, targetMod, proizv);
   Result:= proizv;
 end;
 
@@ -416,11 +369,24 @@ var
   proizv : int64;
   f, f1 : TextFile;
   str : string;
-begin
-  maxInt64 := 9223372036854775807;
-// 2^21 -1 ибо m^3 должно быть <= maxInt64
-  maxM := 2097151;
+  partOneStr : string;
+  partTwoStr : string;
+  strHashCode : string;
+  proizvStr : string;
+  sStr : string;
+  s1, s2 : integer;
+  nextIndex : Cardinal;
+  partOne, partTwo : Integer;
+  maxInt32 : integer;
+  // модуль хешкода, с ним мы и взаимодействуем
+  HashNumber : Int64;
 
+
+  n : Int64;
+  dexp, eexp : Integer;
+begin
+  partOne:= 0;
+  partTwo:= 0;
   if not (Form1.Edit3.Text = '') then
   begin
     Val(Form1.Edit3.Text, hashCode, index);
@@ -430,74 +396,54 @@ begin
     end;
   end;
 
-  Form1.Label3.Caption := '';
 
-  Randomize();
-  currentM := hashCode;
-  if (hashCode > maxM) then
+  if (hashCode < 0) then
   begin
-    k := 1;
-    elements := 0;
-    currentM := hashCode;
-    while (currentM > maxM) do
-    begin
-      Inc(k);
-      currentM := hashCode div k;
-    end;
-    SetLength(MArray, k);
-    if ((maxM - currentM) > 100) then
-    begin
-      for i := 0 to k - 2 do
-      begin
-        el := currentM + (Random(200) - 100);
-        elements := elements + el;
-        MArray[i] := el;
-      end;
-    // последний элемент
-      MArray[k - 1] := hashCode - elements;
-    end;
+    isHashNegative:= True;
+  end;
+  HashNumber:= Abs(hashCode);
+  partOne:= HashNumber;
+  partOneStr := IntToStr(HashNumber);
 
-  end
-// m < maxM
-  else
+  if (HashNumber > 200000) then
   begin
-    SetLength(MArray, 1);
-    MArray[0] := hashCode;
+    // разбить на 2 части пополам
+    strHashCode:= IntToStr(HashNumber);
+    nextIndex:= (Length(strHashCode) div 2) + 1;
+    partOneStr := substring(strHashCode, 1, nextIndex-1);
+    partOne:= StrToInt(partOneStr);
+    partTwoStr := substring(strHashCode, nextIndex, Length(strHashCode));
+    partTwo:= StrToInt(partTwoStr);
   end;
 
 
-  AssignFile(f, 'text.txt');
+  // формируем ключи по наибольшему из 2х значений
+  createSign(Max(partOne, partTwo), n, eexp, dexp);
+
+  str := '{'+IntToStr(eexp)+';'+IntToStr(n)+'}';
+  AssignFile(f, 'openedKey.txt');
+  Rewrite(f);
   Append(f);
-  AssignFile(f1, 'bad.txt');
-  Append(f1);
-
-  z:= hashCode;
- // for i := 1 to z do
- // begin
- //  hashCode:= i;
-    createSign(currentM);
-    proizv := checkIt();
-    str :=
-    'm = ' + IntToStr(hashCode)
-    + ' ; m` = ' + IntToStr(proizv)
-    + ' ; p = ' + IntToStr(p)
-    + ' ; q = ' + IntToStr(q)
-    + ' ; n = ' + IntToStr(n)
-    + ' ; eiler = ' + IntToStr(eiler)
-    + ' ; eexp = ' + IntToStr(eexp)
-    + ' ; dexp = ' + IntToStr(dexp);
-
-
-    if (proizv = hashCode) then
-    begin
-     Writeln(f, str);
-    end
-    else
-      Writeln(f1, str);
- // end;
-
+  Writeln(f, str);
   CloseFile(f);
-  CloseFile(f1);
+
+  str := '{'+IntToStr(dexp)+';'+IntToStr(n)+'}';
+  AssignFile(f, 'closedKey.txt');
+  Rewrite(f);
+  Append(f);
+  Writeln(f, str);
+  CloseFile(f);
+
+
+  s1:= genDigitalSignature(partOne, dexp, n);
+  s2:= genDigitalSignature(partTwo, dexp, n);
+  str := '{'+IntToStr(s1)+';'+IntToStr(s2)+'}';
+  AssignFile(f, 'RSA.txt');
+  Rewrite(f);
+  Append(f);
+  Writeln(f, str);
+  CloseFile(f);
+
 end;
 
 // http://www.cyberforum.ru/delphi-beginners/thread1116790.html
@@ -511,53 +457,6 @@ end;
 
 
 
-procedure TForm1.Button2Click(Sender: TObject);
-var
-  mm, nn, x, y, g, dex: integer;
-  z1: Int64;
-  z2: Int64;
-  z3: Int64;
-begin
-  {}
-  mm := StrToInt(Edit1.Text);
-  nn := StrToInt(Edit2.Text);
-  if (mm < 0) or (nn < 0) then
-  begin
-    ShowMessage('Числа должны быть натуральными');
-    Exit;
-  end;
-  // 46390487073556736
-  // 9222710978872688896
-  {}
-  //gcd_ext(mm, nn, x, y, g);
-  //n := 144;
-  //dex := longPow(10, 6);
-  n := 9223372036854775807;
-  z1 := pow(mm,nn);
-  z1 := z1 mod n;
-  z2 := niceLongPow(mm,nn, n);
-  modexp(mm, nn, n, z3);
+// !!!! Молдовян Н. А. Теоретический минимум и алгоритмы цифровой подписи
 
-
-  Form1.Label6.Caption:= IntToStr(z1) + ' ' + IntToStr(z2);
-  Form1.Label6.Visible:= True;
-  {
-
-  dex := (x mod n + n) mod n;
- // Form1.Label6.Caption := '  before first ' +  IntToStr(x) + '  before second   ' + IntToStr(y) + ' dex = ' + IntToStr(dex);
-  Form1.Label6.Caption:= IntToStr(dex);
-  Form1.Label6.Visible:= True;
-  ShowMessage(Format('gcd(%d, %d) = %d', [m, n, g]) + #13#10 + Format('%d * %d %s %d * %d = %d', [x, m, Znak(y), Abs(y), n, g]));
-
-  }
-end;
-
-
-// Молдовян Н. А. Теоретический минимум и алгоритмы цифровой подписи
-
-procedure TForm1.Button3Click(Sender: TObject);
-begin
-checkIt();
-end;
-end.
 
