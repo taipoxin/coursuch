@@ -240,6 +240,12 @@ begin
     i := i - 1;
   end;
 
+  if (i = 0) then
+  begin
+    one := 0;
+    two := 0;
+    neg := False;
+  end;
   Ch := str[i];
   i := i - 1;
   while (Ch <> ';') do
@@ -286,6 +292,9 @@ end;
 procedure TForm1.Button1Click(Sender: TObject);
 var
   f : TextFile;
+  newFilePath : string;
+  newMessage : string;
+  indexOfDot : Cardinal;
   str : string;
   partOneStr : string;
   partTwoStr : string;
@@ -373,10 +382,20 @@ begin
   if (isHashNegative) then
     str := '{;';
   str := str+IntToStr(s1)+';'+IntToStr(s2)+'}';
-  AssignFile(f, 'RSA.txt');
+
+  indexOfDot := Pos('.', pathToOriginalFile);
+  newFilePath :=
+    substring(pathToOriginalFile, 1, indexOfDot-1)
+    + '_copy'
+    + substring(pathToOriginalFile, indexOfDot, Length(pathToOriginalFile));
+
+
+  //newMessage := mesage + #10#13 + str;
+  newMessage := mesage + str;
+  AssignFile(f, newFilePath);
   Rewrite(f);
   Append(f);
-  Writeln(f, str);
+  Write(f, newMessage);
   CloseFile(f);
 
 end;
@@ -386,6 +405,7 @@ end;
 }
 procedure TForm1.Button2Click(Sender: TObject);
 var hashPart1, hashPart2 : int64;
+    indexer : cardinal;
     e, n : Int64;
     proizv1, proizv2 : integer;
     hashCode : Integer;
@@ -393,13 +413,31 @@ var hashPart1, hashPart2 : int64;
     h1, h2, hsum : Integer;
     ne, neg : Boolean;
     TStrList : TStringList;
-    mesage : string;
+    mesage, mes, openKeyString : string;
 begin
   if (pathToOriginalFile = '') then
   begin
     ShowMessage('откройте файл');
     exit;
   end;
+  if (Length(Form1.Edit2.Text) < 1) then
+  begin
+    showMessage('Введите открытый ключ');
+    exit;
+  end;
+  openKeyString := Form1.Edit2.Text;
+  if (openKeyString[Length(openKeyString)] <> '}') or (openKeyString[1] <> '{') then
+  begin
+    showMessage('ключ не соответстует размеру');
+    exit;
+  end;
+
+  hashPart1 := 0;
+  hashPart2 := 0;
+  e := 0;
+  n := 0;
+  neg := False;
+
   TStrList := TStringList.Create;
   TStrList.LoadFromFile(pathToOriginalFile);
   mesage := TStrList.Text;
@@ -410,14 +448,17 @@ begin
     ShowMessage('файл пуст');
     exit;
   end;
-  hashCode := SDBM(mesage);
-  hashPart1 := 0;
-  hashPart2 := 0;
-  e := 0;
-  n := 0;
-  neg := False;
-  parsePair(Form1.Edit1.Text, hashPart1, hashPart2, neg);
-  parsePair(Form1.Edit2.Text, e, n, ne);
+  parsePair(mesage, hashPart1, hashPart2, neg);
+  indexer := Length(mesage) - (Length(IntToStr(hashPart1)) + Length(IntToStr(hashPart2)) + 4);
+  if (neg) then
+  indexer := indexer - 1;
+
+  mes := substring(mesage, 1,indexer-1);
+  hashCode := SDBM(mes);
+
+
+
+  parsePair(openKeyString, e, n, ne);
   // осуществляем проверку
   proizv1 := modexp(hashPart1, e, n);
   proizv2 := modexp(hashPart2, e, n);
@@ -454,171 +495,6 @@ end;
 // https://planetcalc.ru/3311/
 
 // !!!! Молдовян Н. А. Теоретический минимум и алгоритмы цифровой подписи
-
-
-
-//vars:
-  // хеш строки
-  //p, q: integer;
-  //eiler: Int64;
-  //flag: boolean;
-  //res: integer;
-  //MArray: array of integer;
-  //SignArray: array of int64;
-  //maxInt64: Int64;
-  //maxM: integer;   // 2^21 -1
-  //isHashNegative : boolean;
-  //testers:
-  //tried: cardinal;
-  //trigger: boolean;
-
-  
-{
-// наш 16 битный хеш
-function hashH37(s: string): integer;
-var
-  hash: integer;
-  i: cardinal;
-begin
-  hash := 139062143;
-  for i := 1 to length(s) do
-  begin
-    hash := 37 * hash + ord(s[i]);
-  end;
-  hash := hash shr 16;
-  hashH37 := hash;
-end;
-}
-
-{
-// решето Эратосфена как процедура поиска больших простых чисел
-procedure reshetoErat();
-var
-  A: array[1..232] of boolean;
-  n, x, y: integer;
-begin
-  A[1] := false;
-  n := 232;
-  for x := 2 to n do
-    A[x] := true;
-  for x := 2 to n div 2 do
-    for y := 2 to n div x do
-      A[x * y] := false;
-  y := 1;
-  for x := n downto n - 200 do
-    if A[x] then
-    begin
-      B[y] := x;
-      inc(y);
-    end;
-end;
-}
-
-
-{
-function crc16(s: string): integer;
-var
-  i, crc: integer;
-begin
-  crc := 0;
-  for i := 1 to length(s) do
-  begin
-    crc := crc + ord(s[i]) * 44111;
-    //crc:= crc xor (crc shr 8);
-  end;
-
-  Result := crc;
-end;
-}
-
-{
-function eightbitxorsum(mess: string): integer;
-var
-  i, sum, scode: integer;
-begin
-  sum := ord(mess[1]);
-  for i := 2 to length(mess) do
-    sum := sum xor ord(mess[i]);
-
-  Result := sum;
-end;
-}
-
-
-{
-// возврат в число
-function toInt(ch: char): integer;
-begin
-  if ch = '0' then
-    Result := 0
-  else if ch = '1' then
-    Result := 1
-  else
-    Result := MaxLongint;
-end;
-}
-
-{
-// херня без задач
-function sign(Val: Integer): Char;
-begin
-  if Val >= 0 then
-    Result := '+'
-  else
-    Result := '-';
-end;
-}
-
-
-{
-// не рабочая по человечески функция, следует сравнить с modexp
-//   http://granitnayki.com/?p=212
-// ЭТА ХЕРНЯ ИЗОБРЕТЕНА УКРОПАМИ
-function niceLongPow(a : int64; n : Int64; m: int64):int64;
-var c, S, y : Int64;
-    i, k : integer;
-    strUp : string;
-begin
-  if (n = 1) then
-    Result:= a mod m
-  else
-  begin
-    strUp := ToBin(n);
-    k := length(strUp);
-    y:= a mod m;
-    for i:=k downto 2 do
-    begin
-      y:= (y*y) mod m;
-      if (strUp[i] = '1') then
-      begin
-        y:= y*a mod m;
-      end;
-    end;
-    Result:= y;
-  end;
-end;
-}
-
-{
-function genDigitalSignature(part : integer; dexp : integer; n : int64):Int64;
-begin
-  //s := niceLongPow(hashCode, dexp, n);
-  //modexp(part, dexp, n, s);
-  //Result:= s;
-  Result := modexp(part, dexp, n);
-end;
-}
-
-{
-function checkIt(part:integer; exp : Integer; targetMod : Int64) : int64;
-begin
-  //proizv := niceLongPow(s, eexp, n);
-  //modexp(part, exp, targetMod, proizv);
-  // Result:= proizv;
-  Result := modexp(part, exp, targetMod);
-end;
-}
-
 
 end.
 
