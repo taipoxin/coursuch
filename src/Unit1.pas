@@ -4,22 +4,29 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls;
+  Dialogs, StdCtrls, Menus;
 
 type
   TForm1 = class(TForm)
     Button1: TButton;
-    Edit3: TEdit;
-    Edit1: TEdit;
-    Label1: TLabel;
     Edit2: TEdit;
     Label2: TLabel;
     Button2: TButton;
     OpenDialog1: TOpenDialog;
     Button3: TButton;
+    Label1: TLabel;
+    Label3: TLabel;
+    MainMenu1: TMainMenu;
+    N1: TMenuItem;
+    N2: TMenuItem;
+    N3: TMenuItem;
+    N4: TMenuItem;
     procedure Button1Click(Sender: TObject);
     procedure Button2Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
+    procedure N4Click(Sender: TObject);
+    procedure N2Click(Sender: TObject);
+    procedure N3Click(Sender: TObject);
   private
     { Private declarations }
   public
@@ -181,8 +188,7 @@ end;
 procedure generateKeys(minimalN: integer; var n : Int64; var eexp : integer; var dexp : integer);
 var
   aa, bb, nod: integer;
-  k1, k2 : Cardinal;
-  p, q : cardinal;
+  k1, k2, p, q  : Cardinal;
   eiler : int64;
 begin
   Randomize();
@@ -292,24 +298,13 @@ end;
 procedure TForm1.Button1Click(Sender: TObject);
 var
   f : TextFile;
-  newFilePath : string;
-  newMessage : string;
-  indexOfDot : Cardinal;
-  str : string;
-  partOneStr : string;
-  partTwoStr : string;
-  strHashCode : string;
-  s1, s2 : integer;
-  nextIndex : Cardinal;
-  partOne, partTwo : Integer;
-  // модуль хешкода, с ним мы и взаимодействуем
-  HashNumber : Int64;
+  newFilePath, mesage, newMessage, str, partOneStr, partTwoStr, strHashCode  : string;
+  nextIndex, indexOfDot : Cardinal;
+  s1, s2, dexp, eexp, hashCode, partOne, partTwo  : integer;
+  HashNumber, n : Int64;
   TStrList : TStringList;
-  mesage: string;
   isHashNegative : Boolean;
-  hashCode : integer;
-  n : Int64;
-  dexp, eexp : Integer;
+  
 begin
   if (pathToOriginalFile = '') then
   begin
@@ -348,9 +343,13 @@ begin
     // разбить на 2 части пополам
     strHashCode:= IntToStr(HashNumber);
     nextIndex:= (Length(strHashCode) div 2) + 1;
-    partOneStr := substring(strHashCode, 1, nextIndex-1);
+    //partOneStr := substring(strHashCode, 1, nextIndex-1);
+    // 1 до nextIndex-1
+    partOneStr := copy(strHashCode, 1, nextIndex-1);
     partOne:= StrToInt(partOneStr);
-    partTwoStr := substring(strHashCode, nextIndex, Length(strHashCode));
+    //partTwoStr := substring(strHashCode, nextIndex, Length(strHashCode));
+    // от nextIndex до конца
+    partTwoStr := copy(strHashCode, nextIndex, Length(strHashCode)-nextIndex+1);
     partTwo:= StrToInt(partTwoStr);
   end;
 
@@ -398,19 +397,17 @@ begin
   Write(f, newMessage);
   CloseFile(f);
 
+  ShowMessage('Электронная подпись сформирована! ' + ' Файл с результатом создан по пути ' + newFilePath);
+
 end;
 
 {
 проверка электронно-цифровой подписи RSA для выбранного файла
 }
 procedure TForm1.Button2Click(Sender: TObject);
-var hashPart1, hashPart2 : int64;
-    indexer : cardinal;
-    e, n : Int64;
-    proizv1, proizv2 : integer;
-    hashCode : Integer;
-    hashLen : Cardinal;
-    h1, h2, hsum : Integer;
+var e, n, hashPart1, hashPart2 : int64;
+    indexer, hashLen : cardinal;
+    hashCode, h1, h2, hsum, proizv1, proizv2 : integer;
     ne, neg : Boolean;
     TStrList : TStringList;
     mesage, mes, openKeyString : string;
@@ -470,7 +467,9 @@ begin
   if (neg) then
     hsum := -hsum;
   if (hsum = hashCode) then
-    ShowMessage('документ подлинный');
+    ShowMessage('документ подлинный')
+  else
+    ShowMessage('документ не подлинный')
 end;
 
 
@@ -482,6 +481,8 @@ begin
  if OpenDialog1.Execute then
  begin
    pathToOriginalFile := OpenDialog1.FileName;
+   Label1.Caption:= 'Выбран файл';
+   Label3.Caption:= pathToOriginalFile;
  end;
 end;
 
@@ -495,6 +496,39 @@ end;
 // https://planetcalc.ru/3311/
 
 // !!!! Молдовян Н. А. Теоретический минимум и алгоритмы цифровой подписи
+
+
+
+// создать подпись
+procedure TForm1.N2Click(Sender: TObject);
+begin
+  Button1.Visible:=True;
+  Button3.Visible:=True;
+  Button2.Visible:=False;
+  Label2.Visible:=False;
+  Edit2.Visible:=False;
+
+end;
+
+// проверить эл. подпись
+procedure TForm1.N3Click(Sender: TObject);
+begin
+
+  Button2.Visible:=True;
+  Label2.Visible:=True;
+  Edit2.Visible:=True;
+  Button1.Visible:=False;
+
+
+end;
+
+// Выход
+procedure TForm1.N4Click(Sender: TObject);
+begin
+  Close;
+end;
+
+
 
 end.
 
