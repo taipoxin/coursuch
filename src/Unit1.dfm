@@ -25,13 +25,13 @@ object Form1: TForm1
   object Label1: TLabel
     Left = 120
     Top = 48
-    Width = 185
-    Height = 17
+    Width = 3
+    Height = 16
   end
   object Label3: TLabel
     Left = 19
     Top = 72
-    Width = 37
+    Width = 3
     Height = 16
   end
   object Button1: TButton

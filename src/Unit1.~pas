@@ -35,20 +35,28 @@ type
 
 var
   Form1: TForm1;
-  // массив случайных простых чисел для p и q
-  B: array[1..50] of integer;
-  pathToOriginalFile : string;
+
 
 implementation
 
 uses
   Math;
 
+type
+  SimpleArr = array[1..50] of integer;
+var
+  pathToOriginalFile : string;  
+
+
 {$R *.dfm}
 
-procedure reshErat(maxEl : integer);
+
+{
+Создание решета Эратосфена (нахождение всех простых чисел) до числа maxEl.
+Затем с конца этими значениями заполняется и возвращается B 
+}
+procedure reshErat(maxEl : integer; var B : SimpleArr);
 var
- // BB: array[1..50] of Integer;
   A: array of boolean;
   n, x, y: integer;
 begin
@@ -61,8 +69,9 @@ begin
     for y := 2 to n div x do
       A[x * y] := false;
   y := 1;
+  // идем от максимального значения назад, пока не заполним B
   x:= n;
-  while (y < Length(B)) and (x > 0) do
+  while (y <= Length(B)) and (x > 0) do
   begin
     if A[x] then
     begin
@@ -73,7 +82,9 @@ begin
   end;
 end;
 
-
+{
+быстрый перевод из integer в двочную строку string (только для положительных)
+}
 function ToBin(x: integer): string;
 var
   res: string;
@@ -89,7 +100,13 @@ begin
   Result := res;
 end;
 
-
+{
+функция возведения в степень по модулю  (рекурсия)
+(x^y mod n)
+x - основание
+y - степень
+n - модуль
+}
 function modexp(x,y,n:int64):Int64;
 var z, k : int64;
 begin
@@ -106,27 +123,8 @@ begin
   end;
 end;
 
-{
-  функция возвращает подстроку
-  from  - исходная строка
-  start - позиция от (вкл.)
-  endd  - позиция до (вкл.)
-  start и endd < длины from и > 0
-}
-function substring(from : string; start, endd : Cardinal):string;
-var i : Cardinal;
-begin
-  Result:= '';
-  if  not ((endd < start) or (start < 1) or (endd > Length(from))) then
-  begin
-    for i:=start to endd do
-    begin
-      Result:= Result + from[i];
-    end;
-  end;
-end;
 
-// хеширование строки методом SDBM (х32) с хорошим распределением по всем битам (мало коллизий)
+// хеширование строки методом SDBM (х32) с хорошим распределением по всем битам
 function SDBM(mess: string): integer;
 var
   i: cardinal;
@@ -139,7 +137,7 @@ begin
 end;
 
 {
-  НОД чисел по алгоритму эвклида (расширенному ?)
+  НОД чисел по расширенному алгоритму Евклида (рекурсия)
   x - множитель для a
   y - множитель для b
   gcd - НОД чисел
@@ -161,8 +159,11 @@ begin
 end;
 
 
-// функция возведения в степень (для положительных чисел и степеней.
-// обычное возведение
+{
+функция возведения в степень для положительных чисел и степеней
+base - основание
+up   - степень
+}
 function pow(base, up: int64): int64;
 var
   i: cardinal;
@@ -177,15 +178,20 @@ begin
       Result := base * Result;
       if (result < 0) then
       begin
-        //flag := true;
         break;
       end;
     end;
   end;
 end;
 
-
-procedure generateKeys(minimalN: integer; var n : Int64; var eexp : integer; var dexp : integer);
+{
+n - модуль, произведение случайных чисел p и q
+eiler -  функция Эйлера от n
+minimalN - минимальный N, который может быть
+(он должен быть не меньше хеш-функции входящего сообщения)
+eexp, dexp - открытый и закрытый ключи
+}
+procedure generateKeys(minimalN: integer; var n : Int64; var eexp : integer; var dexp : integer; B : SimpleArr);
 var
   aa, bb, nod: integer;
   k1, k2, p, q  : Cardinal;
@@ -196,38 +202,53 @@ begin
   q := 0;
   k1 := 0;
   k2 := 1;
-
+  // формирование случайных чисел в диапазоне от minimalN до minimalN * 50
+  // числа должны быть одного порядка
   while ((p = q) or (p = 0) or (q = 0) or (n < minimalN) or (n > minimalN * 50) or (k1 <> k2)) do
   begin
-    p := RandomFrom(b);
-    q := RandomFrom(b);
+    // числа берем из массива с неким диапазоном решета Эратосфена
+    p := RandomFrom(B);
+    q := RandomFrom(B);
     k1 := Length(toBin(p));
     k2 := Length(toBin(q));
     n := p * q;
   end;
-
+  // функция Эйлера от n
   eiler := (p - 1) * (q - 1);
   eexp := 1;
   nod := 0;
 
+  // формирование открытого ключа e,
+  // пока НОД по расширенному алгоритму Евклида
+  // этого ключа и функции Эйлера не равен 1 (тогда они взаимно простые)
   while (nod <> 1) do
   begin
     inc(eexp);
     gcd_ext(eexp, eiler, aa, bb, nod);
   end;
+  // секретный ключ d - обратный к открытому ключу e по модулю n
+  // вычисляется по формуле (A mod E(n) + E(n)) mod E(n),
+  // где A - множитель в алгоритме перед открытым ключом e,
+  // а E(n) - функция Эйлера от n
   dexp := (aa mod eiler + eiler) mod eiler;
 end;
 
 procedure createSign(minimalN: integer; var n : Int64; var eexp : integer; var dexp : integer);
+var simpleNumbersArray : SimpleArr;
 begin
-  reshErat(Round(Sqrt(minimalN*10)));
-  generateKeys(minimalN, n, eexp, dexp);
+  // вначале формируем решето Эратосфена, задавая ему максимальный элемент,
+  // опираясь на minimalN
+  // (10minN)^(1/2) округлить ~ 3.16minN^(1/2) 
+  reshErat(Round(Sqrt(minimalN*10)), simpleNumbersArray);
+  // формируем n, а также открытый и закрытый ключи
+  generateKeys(minimalN, n, eexp, dexp, simpleNumbersArray);
 end;
 
 
 {
 парсит пары вида [one;two], извлекая из них one и two
-отдельный случай: [;one;two] , указывает на то, что изначальный hashCode был отрицателен, записывается в neg
+если neg = True, то [;one;two] - указывает на то,
+что изначальный hashCode был отрицателен, записывается в neg
 }
 procedure parsePair(str : string; var one : Int64; var two : int64; var neg : boolean);
 var i : Cardinal;
@@ -240,6 +261,7 @@ begin
   Ch := '0';
   s1 := '';
   s2 := '';
+  // парсим с конца
   while (Ch <> '}') do
   begin
     Ch := str[i];
@@ -292,19 +314,17 @@ begin
 end;
 
 
-{
-создание электронно-цифровой подписи RSA для выбранного файла
-}
-procedure TForm1.Button1Click(Sender: TObject);
+
+procedure generateRSA();
 var
   f : TextFile;
-  newFilePath, mesage, newMessage, str, partOneStr, partTwoStr, strHashCode  : string;
+  newFilePath, mesage, newMessage, str, partOneStr, partTwoStr, strHashCode : string;
   nextIndex, indexOfDot : Cardinal;
   s1, s2, dexp, eexp, hashCode, partOne, partTwo  : integer;
   HashNumber, n : Int64;
   TStrList : TStringList;
   isHashNegative : Boolean;
-  
+
 begin
   if (pathToOriginalFile = '') then
   begin
@@ -338,16 +358,17 @@ begin
   partOne:= HashNumber;
   partOneStr := IntToStr(HashNumber);
 
+  // разбиваем большие хеши на 2
   if (HashNumber > 200000) then
   begin
     // разбить на 2 части пополам
     strHashCode:= IntToStr(HashNumber);
     nextIndex:= (Length(strHashCode) div 2) + 1;
-    //partOneStr := substring(strHashCode, 1, nextIndex-1);
+
     // 1 до nextIndex-1
     partOneStr := copy(strHashCode, 1, nextIndex-1);
     partOne:= StrToInt(partOneStr);
-    //partTwoStr := substring(strHashCode, nextIndex, Length(strHashCode));
+
     // от nextIndex до конца
     partTwoStr := copy(strHashCode, nextIndex, Length(strHashCode)-nextIndex+1);
     partTwo:= StrToInt(partTwoStr);
@@ -380,16 +401,17 @@ begin
   str := '{';
   if (isHashNegative) then
     str := '{;';
+  // формируем пару ключей {dexp;n}
   str := str+IntToStr(s1)+';'+IntToStr(s2)+'}';
-
+  // позиция точки (перед расширением файла)
   indexOfDot := Pos('.', pathToOriginalFile);
+
+  //from, to-from+1 (inclusively)
   newFilePath :=
-    substring(pathToOriginalFile, 1, indexOfDot-1)
+  Copy(pathToOriginalFile, 1, indexOfDot-1-1+1)
     + '_copy'
-    + substring(pathToOriginalFile, indexOfDot, Length(pathToOriginalFile));
+    + Copy(pathToOriginalFile, indexOfDot, Length(pathToOriginalFile)-indexOfDot+1);
 
-
-  //newMessage := mesage + #10#13 + str;
   newMessage := mesage + str;
   AssignFile(f, newFilePath);
   Rewrite(f);
@@ -397,14 +419,12 @@ begin
   Write(f, newMessage);
   CloseFile(f);
 
-  ShowMessage('Электронная подпись сформирована! ' + ' Файл с результатом создан по пути ' + newFilePath);
-
+  ShowMessage('Электронная подпись сформирована! '
+  + ' Файл с результатом создан по пути ' + newFilePath);
 end;
 
-{
-проверка электронно-цифровой подписи RSA для выбранного файла
-}
-procedure TForm1.Button2Click(Sender: TObject);
+
+procedure checkDoc();
 var e, n, hashPart1, hashPart2 : int64;
     indexer, hashLen : cardinal;
     hashCode, h1, h2, hsum, proizv1, proizv2 : integer;
@@ -450,13 +470,13 @@ begin
   if (neg) then
   indexer := indexer - 1;
 
-  mes := substring(mesage, 1,indexer-1);
+  mes := Copy(mesage, 1, indexer-1-1+1);
   hashCode := SDBM(mes);
-
-
 
   parsePair(openKeyString, e, n, ne);
   // осуществляем проверку
+  if (e = 0) then
+    Exit;
   proizv1 := modexp(hashPart1, e, n);
   proizv2 := modexp(hashPart2, e, n);
 
@@ -469,7 +489,33 @@ begin
   if (hsum = hashCode) then
     ShowMessage('документ подлинный')
   else
-    ShowMessage('документ не подлинный')
+    ShowMessage('документ не подлинный');
+end;
+
+procedure chooseFile();
+begin
+ if Form1.OpenDialog1.Execute then
+ begin
+   pathToOriginalFile := Form1.OpenDialog1.FileName;
+   Form1.Label1.Caption:= 'Выбран файл';
+   Form1.Label3.Caption:= pathToOriginalFile;
+ end;
+end;
+
+{
+создание электронно-цифровой подписи RSA для выбранного файла
+}
+procedure TForm1.Button1Click(Sender: TObject);
+begin
+  generateRSA();
+end;
+
+{
+проверка электронно-цифровой подписи RSA для выбранного файла
+}
+procedure TForm1.Button2Click(Sender: TObject);
+begin
+  checkDoc();
 end;
 
 
@@ -478,24 +524,8 @@ end;
 }
 procedure TForm1.Button3Click(Sender: TObject);
 begin
- if OpenDialog1.Execute then
- begin
-   pathToOriginalFile := OpenDialog1.FileName;
-   Label1.Caption:= 'Выбран файл';
-   Label3.Caption:= pathToOriginalFile;
- end;
+ chooseFile();
 end;
-
-// http://www.cyberforum.ru/delphi-beginners/thread1116790.html
-
-// Важно:
-// http://sumk.ulstu.ru/docs/mszki/Zavgorodnii/9.4.html
-
-// калькули:
-// http://teh-box.ru/informationsecurity/algoritm-shifrovaniya-rsa-na-palcax.html
-// https://planetcalc.ru/3311/
-
-// !!!! Молдовян Н. А. Теоретический минимум и алгоритмы цифровой подписи
 
 
 
@@ -513,13 +543,11 @@ end;
 // проверить эл. подпись
 procedure TForm1.N3Click(Sender: TObject);
 begin
-
   Button2.Visible:=True;
+  Button3.Visible:=True;
   Label2.Visible:=True;
   Edit2.Visible:=True;
   Button1.Visible:=False;
-
-
 end;
 
 // Выход
@@ -527,6 +555,19 @@ procedure TForm1.N4Click(Sender: TObject);
 begin
   Close;
 end;
+
+// http://www.cyberforum.ru/delphi-beginners/thread1116790.html
+
+// Важно:
+// http://sumk.ulstu.ru/docs/mszki/Zavgorodnii/9.4.html
+
+// калькули:
+// http://teh-box.ru/informationsecurity/algoritm-shifrovaniya-rsa-na-palcax.html
+// https://planetcalc.ru/3311/
+
+// !!!! Молдовян Н. А. Теоретический минимум и алгоритмы цифровой подписи
+
+
 
 
 
