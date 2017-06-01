@@ -43,7 +43,7 @@ uses
   Math;
 
 type
-  SimpleArr = array[1..50] of integer;
+  SimpleArr = array [1..50] of integer;
 var
   pathToOriginalFile : string;  
 
@@ -211,7 +211,8 @@ begin
     q := RandomFrom(B);
     k1 := Length(toBin(p));
     k2 := Length(toBin(q));
-    n := p * q;
+    if (k1 = k2) then
+      n := p * q;
   end;
   // функция Эйлера от n
   eiler := (p - 1) * (q - 1);
@@ -236,9 +237,11 @@ end;
 procedure createSign(minimalN: integer; var n : Int64; var eexp : integer; var dexp : integer);
 var simpleNumbersArray : SimpleArr;
 begin
+  //SetLength(simpleNumbersArray, minimalN);
+
   // вначале формируем решето Эратосфена, задавая ему максимальный элемент,
   // опираясь на minimalN
-  // (10minN)^(1/2) округлить ~ 3.16minN^(1/2) 
+  // (10minN)^(1/2) округлить ~ 3.16minN^(1/2)
   reshErat(Round(Sqrt(minimalN*10)), simpleNumbersArray);
   // формируем n, а также открытый и закрытый ключи
   generateKeys(minimalN, n, eexp, dexp, simpleNumbersArray);
@@ -331,7 +334,6 @@ begin
     ShowMessage('откройте файл');
     exit;
   end;
-  //partOne:= 0;
   partTwo:= 0;
   isHashNegative := False;
 
@@ -339,12 +341,6 @@ begin
   TStrList.LoadFromFile(pathToOriginalFile);
   mesage := TStrList.Text;
   TStrList.Free;
-
-  if (mesage = '') then
-  begin
-    ShowMessage('файл пуст');
-    exit;
-  end;
   hashCode := SDBM(mesage);
 
 
@@ -481,6 +477,8 @@ begin
   proizv2 := modexp(hashPart2, e, n);
 
   hashLen := Length(IntToStr(hashCode));
+  if (hashCode < 0) then
+    dec(hashLen);
   h1 := proizv1 * pow(10, hashLen - Length(IntToStr(proizv1)));
   h2 := proizv2;
   hsum := h1 + h2;
@@ -555,20 +553,6 @@ procedure TForm1.N4Click(Sender: TObject);
 begin
   Close;
 end;
-
-// http://www.cyberforum.ru/delphi-beginners/thread1116790.html
-
-// Важно:
-// http://sumk.ulstu.ru/docs/mszki/Zavgorodnii/9.4.html
-
-// калькули:
-// http://teh-box.ru/informationsecurity/algoritm-shifrovaniya-rsa-na-palcax.html
-// https://planetcalc.ru/3311/
-
-// !!!! Молдовян Н. А. Теоретический минимум и алгоритмы цифровой подписи
-
-
-
 
 
 end.
